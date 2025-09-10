@@ -1774,7 +1774,8 @@ So multiple EAF buffers visiting the same file do not sync with each other."
     eaf-wm-name))
 
 (defvar eaf-is-member-of-focus-fix-wms
-  (member (eaf--get-current-desktop-name) eaf-wm-focus-fix-wms))
+  (if (memq system-type '(gnu/linux))
+  (member (eaf--get-current-desktop-name) eaf-wm-focus-fix-wms)))
 
 (defun eaf--activate-emacs-win32-window()
   "Activate Emacs win32 window."
