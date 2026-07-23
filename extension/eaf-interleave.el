@@ -102,6 +102,10 @@ taken as columns."
 (defconst eaf-interleave--url-prop "interleave_url"
   "The pdf property string.")
 
+(defconst eaf-interleave--page-y-note-prop "interleave_page_y_note"
+  "The page and Y-coordinate note property string.
+Stores page and Y-percent (0-100) for line-level precision.")
+
 ;; Minor mode for the org file buffer containing notes
 (defvar eaf-interleave-mode-map (make-sparse-keymap)
   "Keymap while command `eaf-interleave-mode' is active in the org file buffer.")
@@ -156,17 +160,23 @@ split horizontally."
   )
 
 (defun eaf-interleave-sync-pdf-page-current ()
-  "Open PDF page for currently visible notes."
+  "Open PDF page and Y-coordinate for currently visible notes.
+Uses page:y_percent for line-level precision when available."
   (interactive)
-  (let* ((pdf-page (org-entry-get-with-inheritance eaf-interleave--page-note-prop))
+  (let* ((page-y (org-entry-get-with-inheritance eaf-interleave--page-y-note-prop))
+         (pdf-page (org-entry-get-with-inheritance eaf-interleave--page-note-prop))
          (pdf-url (org-entry-get-with-inheritance eaf-interleave--url-prop))
          (buffer (eaf-interleave--find-buffer pdf-url)))
     (if buffer
         (progn
           (eaf-interleave--display-buffer buffer)
-          (when pdf-page
+          (cond
+           (page-y
             (with-current-buffer buffer
-              (eaf-interleave--pdf-viewer-goto-page pdf-url pdf-page))))
+              (eaf-interleave--pdf-viewer-goto-page-y pdf-url page-y)))
+           (pdf-page
+            (with-current-buffer buffer
+              (eaf-interleave--pdf-viewer-goto-page pdf-url pdf-page)))))
       (eaf-interleave--select-split-function)
       (eaf-interleave--open-pdf pdf-url)
       )))
@@ -369,8 +379,9 @@ Return the position of the newly inserted heading."
       (funcall change-level)))
   (point))
 
-(defun eaf-interleave--create-new-note (url &optional title page)
-  "Create a new headline for current EAF url."
+(defun eaf-interleave--create-new-note (url &optional title page-y)
+  "Create a new headline for current EAF url.
+PAGE-Y is a string in format 'page:y_percent' (e.g. '5:32.5')."
   (let (new-note-position)
     (with-current-buffer eaf-interleave-org-buffer
       (save-excursion
@@ -379,8 +390,12 @@ Return the position of the newly inserted heading."
         (org-set-property eaf-interleave--url-prop url)
         (when title
           (insert (format "Notes for %s" title)))
-        (when page
-          (org-set-property eaf-interleave--page-note-prop (number-to-string page)))
+        (when page-y
+          (let* ((parts (split-string page-y ":"))
+                 (page (car parts))
+                 (y-pct (cadr parts)))
+            (org-set-property eaf-interleave--page-note-prop page)
+            (org-set-property eaf-interleave--page-y-note-prop page-y)))
         (eaf-interleave--narrow-to-subtree)
         (org-cycle-hide-drawers t)))
     (eaf-interleave--switch-to-org-buffer t new-note-position)))
@@ -416,11 +431,12 @@ Consider a headline with property PROPERTY as parent headline."
 
 (defun eaf-interleave--pdf-add-note ()
   "EAF pdf-viewer-mode add note"
-  (let* ((page (eaf-interleave--pdf-viewer-current-page eaf--buffer-url))
+  (let* ((page-y (eaf-interleave--pdf-viewer-current-page-y eaf--buffer-url))
+         (page (string-to-number (car (split-string page-y ":"))))
          (position (eaf-interleave--go-to-page-note eaf--buffer-url page)))
     (if position
         (eaf-interleave--switch-to-org-buffer t position)
-      (eaf-interleave--create-new-note eaf--buffer-url eaf--buffer-app-name page)))
+      (eaf-interleave--create-new-note eaf--buffer-url eaf--buffer-app-name page-y)))
   )
 
 (defun eaf-interleave--browser-add-note ()
@@ -470,6 +486,16 @@ Consider a headline with property PROPERTY as parent headline."
   "goto page"
   (let ((id (buffer-local-value 'eaf--buffer-id (eaf-interleave--find-buffer url))))
     (eaf-call-async "handle_input_response" id "jump_page" page)))
+
+(defun eaf-interleave--pdf-viewer-current-page-y (url)
+  "Get current page and Y-coordinate as 'page:y' string."
+  (let ((id (buffer-local-value 'eaf--buffer-id (eaf-interleave--find-buffer url))))
+    (eaf-call-sync "execute_function" id "current_scroll_info")))
+
+(defun eaf-interleave--pdf-viewer-goto-page-y (url page-y)
+  "Jump to specific page and Y-coordinate. page-y format: 'page:y_percent'"
+  (let ((id (buffer-local-value 'eaf--buffer-id (eaf-interleave--find-buffer url))))
+    (eaf-call-async "handle_input_response" id "goto_page_and_y_percent" page-y)))
 
 (defun eaf-interleave--ensure-buffer-window (buffer)
   "If BUFFER don't display, will use other window display"
