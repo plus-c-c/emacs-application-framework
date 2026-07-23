@@ -34,7 +34,7 @@ from core.utils import *
 from PyQt6 import QtCore
 from PyQt6.QtCore import QEvent, QEventLoop, QPoint, QPointF, Qt, QThread, QTimer, QUrl, pyqtSlot
 from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
+from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineScript, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QApplication, QWidget
 
@@ -311,6 +311,12 @@ Note, we need hook this function to signal 'loadProgress', signal 'loadStarted' 
                     self.zoom_in()
                 else:
                     self.zoom_out()
+
+        if event.type() == QEvent.Type.MouseButtonRelease and \
+           event.button() in [Qt.MouseButton.ForwardButton,
+                              Qt.MouseButton.BackButton]:
+            event.accept()
+            return True
 
         return super(QWebEngineView, self).eventFilter(obj, event)
 
@@ -825,6 +831,28 @@ webengine_profile = QWebEngineProfile('eaf')
 webengine_profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
 webengine_profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.DiskHttpCache)
 
+# Inject prefers-color-scheme: dark override as a profile-level UserScript.
+# Runs once at DocumentReady (before page scripts, after DOM ready) in MainWorld.
+# Separated from dark_mode_js (DarkReader) which is injected on every progress < 100.
+_dark_scheme_script = QWebEngineScript()
+_dark_scheme_script.setName("eaf-dark-scheme")
+_dark_scheme_script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
+_dark_scheme_script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
+_dark_scheme_script.setRunsOnSubFrames(True)
+_dark_scheme_script.setSourceCode("""
+(function() {
+    var orig = window.matchMedia;
+    window.matchMedia = function(q) {
+        var r = orig.call(window, q);
+        if (q === '(prefers-color-scheme: dark)') {
+            try { Object.defineProperty(r, 'matches', { get: function() { return true; } }); } catch(e) {}
+        }
+        return r;
+    };
+})();
+""")
+webengine_profile.scripts().insert(_dark_scheme_script)
+
 class BrowserBuffer(Buffer):
 
     close_page = QtCore.pyqtSignal(str)
@@ -931,6 +959,10 @@ class BrowserBuffer(Buffer):
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, self.enable_javascript)
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, self.enable_javascript_access_clipboard)
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, self.enable_scrollbar)
+
+            # Make sure
+            self.settings.setAttribute(QWebEngineSettings.WebAttribute.ScreenCaptureEnabled, True)
+            self.settings.setAttribute(QWebEngineSettings.WebAttribute.WebRTCPublicInterfacesOnly, False)
 
             if self.unknown_url_scheme_policy == "DisallowUnknownUrlSchemes":
                 self.settings.setUnknownUrlSchemePolicy(self.settings.UnknownUrlSchemePolicy.DisallowUnknownUrlSchemes)
