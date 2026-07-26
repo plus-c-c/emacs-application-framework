@@ -28,6 +28,7 @@ from PyQt6.QtNetwork import QNetworkProxy, QNetworkProxyFactory
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer, QThread
 from core.utils import PostGui, eval_in_emacs, get_emacs_var, init_epc_client, close_epc_client, message_to_emacs, get_emacs_vars, get_emacs_config_dir
+from eaf.ocr import OCRThread
 from epc.server import ThreadingEPCServer
 import json
 import os
@@ -36,6 +37,13 @@ import threading
 
 if platform.system() == "Windows":
     import pygetwindow as gw    # type: ignore
+
+# Global variables (initialized in main block)
+emacs_width = 0
+emacs_height = 0
+proxy_string = ""
+destroy_view_list = []
+
 
 class EAF(object):
     def __init__(self, args):
@@ -205,6 +213,22 @@ class EAF(object):
 
         return app_buffer
 
+    @staticmethod
+    def _max_view_size_for_buffer(view_infos, buffer_id):
+        """Compute max (width, height) for BUFFER_ID from VIEW_INFOS.
+
+        Uses fresh Emacs data instead of self.view_dict, avoiding stale old
+        views that are pending destruction inflating the buffer widget size.
+        """
+        max_w, max_h = 0, 0
+        for info in view_infos:
+            (bid, _, _, _, w, h) = info.split(":")
+            if bid == buffer_id:
+                w, h = int(w), int(h)
+                if w * h > max_w * max_h:
+                    max_w, max_h = w, h
+        return (max_w, max_h)
+
     @PostGui()
     def update_views(self, args):
         ''' Update views.'''
@@ -263,17 +287,16 @@ class EAF(object):
             # Adjust buffer size along with views change.
             # Note: just buffer that option `fit_to_view' is False need to adjust,
             # if buffer option fit_to_view is True, buffer render adjust by view.resizeEvent()
+            #
+            # Compute max view size from view_infos (fresh Emacs data) instead of
+            # self.view_dict (which may contain stale old views pending destruction).
             for buffer in list(self.buffer_dict.values()):
                 if not buffer.fit_to_view:
-                    buffer_views = list(filter(lambda v: v.buffer_id == buffer.buffer_id, list(self.view_dict.values())))
+                    (max_w, max_h) = self._max_view_size_for_buffer(view_infos, buffer.buffer_id)
 
-                    # Adjust buffer size to max view's size.
-                    if len(buffer_views) > 0:
-                        max_view = max(buffer_views, key=lambda v: v.width * v.height)
-
-                        buffer.buffer_widget.width, buffer.buffer_widget.height = lambda: max_view.width, lambda: max_view.height
-                        buffer.buffer_widget.resize(max_view.width, max_view.height)
-                    # Adjust buffer size to emacs window size if not match view found.
+                    if max_w > 0 and max_h > 0:
+                        buffer.buffer_widget.width, buffer.buffer_widget.height = lambda: max_w, lambda: max_h
+                        buffer.buffer_widget.resize(max_w, max_h)
                     else:
                         buffer.buffer_widget.width, buffer.buffer_widget.height = lambda: emacs_width, lambda: emacs_height
                         buffer.buffer_widget.resize(emacs_width, emacs_height)
@@ -542,82 +565,3 @@ class EAF(object):
     def cleanup(self):
         '''Do some cleanup before exit python process.'''
         close_epc_client()
-
-OCR_ADJUST_DICT = {
-    " ,": ",",
-    "一一一": " ── "
-}
-
-class OCRThread(QThread):
-
-    def __init__(self, image_path):
-        QThread.__init__(self)
-
-        self.image_path = image_path
-
-    def adjust_ocr(self, ocr_string):
-        for char in OCR_ADJUST_DICT:
-            ocr_string = ocr_string.replace(char, OCR_ADJUST_DICT[char])
-
-        return ocr_string
-
-    def run(self):
-        try:
-            message_to_emacs("Use PaddleOCR analyze screenshot, it's need few seconds to analyze...")
-            import os
-            python_command = get_emacs_var("eaf-python-command")
-            command_string = "{} paddle_ocr.py {}".format(python_command, self.image_path)
-            cwd = os.path.join(os.path.dirname(__file__), "core")
-
-            import subprocess
-            process = subprocess.Popen(command_string, cwd=cwd, shell=True, text=True,
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            process.wait()
-            string = process.stdout.readlines()[-1]    # type: ignore
-
-            eval_in_emacs("eaf-ocr-buffer-record", [self.adjust_ocr(string)])
-        except:
-            import traceback
-            traceback.print_exc()
-
-            message_to_emacs("Use EasyOCR analyze screenshot, it's need few seconds to analyze...")
-
-            try:
-                import easyocr
-                reader = easyocr.Reader(['ch_sim','en'])
-                result = reader.readtext(self.image_path)
-                string = ''.join(list(map(lambda r: r[1], result)))
-                eval_in_emacs("eaf-ocr-buffer-record", [self.adjust_ocr(string)])
-            except:
-                import traceback
-                traceback.print_exc()
-
-                message_to_emacs("Please use pip3 install PaddleOCR or EasyOCR first.")
-
-        import os
-        os.remove(self.image_path)
-
-if __name__ == "__main__":
-    import sys
-    import signal
-
-    proxy_string = ""
-
-    emacs_width = emacs_height = 0
-
-    destroy_view_list = []
-
-    hardware_acceleration_args = []
-    if platform.system() != "Windows":
-        hardware_acceleration_args += [
-            "--ignore-gpu-blocklist",
-            "--enable-gpu-rasterization",
-            "--enable-native-gpu-memory-buffers"]
-
-    app = QApplication(sys.argv + hardware_acceleration_args)
-    app.setApplicationName("eaf.py")
-
-    eaf = EAF(sys.argv[1:])
-
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    sys.exit(app.exec())

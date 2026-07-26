@@ -1,123 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# Copyright (C) 2018 Andy Stewart
-#
-# Author:     Andy Stewart <lazycat.manatee@gmail.com>
-# Maintainer: Andy Stewart <lazycat.manatee@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import abc
-import string
-import time
 
 from core.utils import *
-from PyQt6.QtCore import QEvent, Qt, QThread, pyqtSignal
+from core.buffer.keymap import QT_KEY_DICT, QT_TEXT_DICT, QT_MODIFIER_DICT
+from core.buffer.input import FetchMarkerInputThread, FetchSearchInputThread
+from PyQt6.QtCore import QEvent, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QCursor, QFocusEvent, QKeyEvent
 from PyQt6.QtWidgets import QApplication, QGraphicsScene
 
-QT_KEY_DICT = {}
-
-# Build char event.
-for char in string.ascii_lowercase:
-    upper_char = char.upper()
-    QT_KEY_DICT[char] = eval("Qt.Key.Key_{}".format(upper_char))
-    QT_KEY_DICT[upper_char] = eval("Qt.Key.Key_{}".format(upper_char))
-
-# Build number event.
-for number in range(0, 10):
-    QT_KEY_DICT[str(number)] = eval("Qt.Key.Key_{}".format(number))
-
-QT_KEY_DICT.update({
-    ''':''': Qt.Key.Key_Colon,
-    ''';''': Qt.Key.Key_Semicolon,
-    '''.''': Qt.Key.Key_Period,
-    ''',''': Qt.Key.Key_Comma,
-    '''+''': Qt.Key.Key_Plus,
-    '''-''': Qt.Key.Key_Minus,
-    '''=''': Qt.Key.Key_Equal,
-    '''_''': Qt.Key.Key_Underscore,
-    '''[''': Qt.Key.Key_BracketLeft,
-    ''']''': Qt.Key.Key_BracketRight,
-    '''(''': Qt.Key.Key_BraceLeft,
-    ''')''': Qt.Key.Key_BraceRight,
-    '''{''': Qt.Key.Key_ParenLeft,
-    '''}''': Qt.Key.Key_ParenRight,
-    '''<''': Qt.Key.Key_Less,
-    '''>''': Qt.Key.Key_Greater,
-    '''@''': Qt.Key.Key_At,
-    '''\\''': Qt.Key.Key_Backslash,
-    '''|''': Qt.Key.Key_Bar,
-    '''/''': Qt.Key.Key_Slash,
-    '''#''': Qt.Key.Key_NumberSign,
-    '''$''': Qt.Key.Key_Dollar,
-    '''?''': Qt.Key.Key_Question,
-    '''"''': Qt.Key.Key_QuoteDbl,
-    '''`''': Qt.Key.Key_QuoteLeft,
-    '''%''': Qt.Key.Key_Percent,
-    '''^''': Qt.Key.Key_AsciiCircum,
-    '''&''': Qt.Key.Key_Ampersand,
-    '''*''': Qt.Key.Key_Asterisk,
-    '''~''': Qt.Key.Key_AsciiTilde,
-    '''!''': Qt.Key.Key_Exclam,
-    '''\'''': Qt.Key.Key_Apostrophe,
-    '''SPC''': Qt.Key.Key_Space,
-    '''RET''': Qt.Key.Key_Return,
-    '''DEL''': Qt.Key.Key_Backspace,
-    '''TAB''': Qt.Key.Key_Tab,
-    '''<backtab>''': Qt.Key.Key_Backtab,
-    '''<home>''': Qt.Key.Key_Home,
-    '''<end>''': Qt.Key.Key_End,
-    '''<left>''': Qt.Key.Key_Left,
-    '''<right>''': Qt.Key.Key_Right,
-    '''<up>''': Qt.Key.Key_Up,
-    '''<down>''': Qt.Key.Key_Down,
-    '''<prior>''': Qt.Key.Key_PageUp,
-    '''<next>''': Qt.Key.Key_PageDown,
-    '''<delete>''': Qt.Key.Key_Delete,
-    '''<backspace>''': Qt.Key.Key_Backspace,
-    '''<return>''': Qt.Key.Key_Return,
-    '''<escape>''': Qt.Key.Key_Escape
-})
-
-# NOTE:
-# We need convert return or backspace to correct text,
-# otherwise EAF browser will crash when user type return/backspace key.
-QT_TEXT_DICT = {
-    "SPC": " ",
-    "<return>": "RET",
-    "<backtab>": "",
-    "<home>": "",
-    "<end>": "",
-    "<left>": "",
-    "<right>": "",
-    "<up>": "",
-    "<down>": "",
-    "<prior>": "",
-    "<next>": "",
-    "<delete>": "",
-    "<backspace>": "",
-    "<escape>": ""
-}
-
-QT_MODIFIER_DICT = {
-    "C": Qt.KeyboardModifier.ControlModifier,
-    "M": Qt.KeyboardModifier.AltModifier,
-    "S": Qt.KeyboardModifier.ShiftModifier,
-    "s": Qt.KeyboardModifier.MetaModifier
-}
 
 class Buffer(QGraphicsScene):
     __metaclass__ = abc.ABCMeta
@@ -238,7 +127,7 @@ class Buffer(QGraphicsScene):
             QCursor().setPos(c_x, 0)
         elif min_dist == bottom_dist:
             QCursor().setPos(c_x, sc_height-1)
-        
+
     def set_aspect_ratio(self, aspect_ratio):
         ''' Set aspect ratio.'''
         self.aspect_ratio = aspect_ratio
@@ -497,65 +386,3 @@ class Buffer(QGraphicsScene):
 
         # Activate emacs window when call focus widget, avoid first char is not
         eval_in_emacs('eaf-activate-emacs-window', [])
-
-class FetchMarkerInputThread(QThread):
-
-    match_marker = pyqtSignal(str, str)
-
-    def __init__(self, callback_tag, markers):
-        QThread.__init__(self)
-
-        self.callback_tag = callback_tag
-        self.running_flag = True
-
-        self.marker_quit_keys = get_emacs_var("eaf-marker-quit-keys") or ""
-        self.markers = markers
-
-    def run(self):
-        while self.running_flag:
-            if self.markers:
-                minibuffer_input = get_emacs_func_result("minibuffer-contents-no-properties", [])
-
-                marker_input_quit = minibuffer_input and len(minibuffer_input) > 0 and minibuffer_input[-1] in self.marker_quit_keys
-                marker_input_finish = minibuffer_input in self.markers
-
-                if marker_input_quit or marker_input_finish:
-                    self.running_flag = False
-                    eval_in_emacs('exit-minibuffer', [])
-                    message_to_emacs("Quit marker selection." if marker_input_quit else "Marker selected.")
-
-            time.sleep(0.1)
-
-    def stop(self):
-        self.running_flag = False
-
-class FetchSearchInputThread(QThread):
-
-    search_changed = pyqtSignal(str, str)
-    search_finish = pyqtSignal(str)
-
-    def __init__(self, callback_tag):
-        QThread.__init__(self)
-
-        self.search_string = ""
-        self.callback_tag = callback_tag
-        self.running_flag = True
-
-    def run(self):
-        while self.running_flag:
-            in_minibuffer = get_emacs_func_result("minibufferp", [])
-
-            if in_minibuffer:
-                minibuffer_input = get_emacs_func_result("minibuffer-contents-no-properties", [])
-
-                if minibuffer_input != self.search_string:
-                    self.search_changed.emit(self.callback_tag, minibuffer_input)
-                    self.search_string = minibuffer_input
-            else:
-                self.stop()
-
-            time.sleep(0.1)
-
-    def stop(self):
-        self.search_finish.emit(self.callback_tag)
-        self.running_flag = False
