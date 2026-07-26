@@ -1,8 +1,6 @@
 *.elc
 *.pyc
-/.log/
-app/
-app/*
+/__pycache__/
 node_modules/
 dist/
 tags
@@ -11,3 +9,4 @@ compile_commands.json
 /reinput/reinput
 .cache/
 .aider*
+package-lock.json
