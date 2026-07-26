@@ -1,0 +1,16 @@
+{
+    "pip": {
+        "linux": [
+            "packaging",
+            "pymupdf"
+        ],
+        "win32": [
+            "packaging",
+            "pymupdf"
+        ],
+        "darwin": [
+            "packaging",
+            "pymupdf"
+        ]
+    }
+}

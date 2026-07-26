@@ -1,0 +1,38 @@
+{
+  "pacman": [
+    "fd"
+  ],
+  "emerge": [
+    "sys-apps/fd"
+  ],
+  "apt": [
+    "fd-find"
+  ],
+  "dnf": [
+    "fd-find"
+  ],
+  "pkg": [
+    "fd-find"
+  ],
+  "zypper":[
+    "fd"
+  ],
+  "pip": {
+    "linux": [
+      "pypinyin",
+      "pygments",
+      "exif"
+    ],
+    "win32": [
+      "pypinyin",
+      "pygments",
+      "exif"
+    ],
+    "darwin": [
+      "pypinyin",
+      "pygments",
+      "exif"
+    ]
+  },
+  "vue_install": true
+}

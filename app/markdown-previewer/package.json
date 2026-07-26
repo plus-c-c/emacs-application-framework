@@ -1,0 +1,23 @@
+{
+    "name": "eaf-markdown-previewer",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/emacs-eaf/emacs-application-framework.git"
+    },
+    "author": "",
+    "license": "GPL-3.0-or-later",
+    "bugs": {
+        "url": "https://github.com/emacs-eaf/emacs-application-framework/issues"
+    },
+    "homepage": "https://github.com/emacs-eaf/emacs-application-framework#readme",
+    "dependencies": {
+        "@shd101wyy/mume": "^0.6.8",
+        "darkreader": "^4.9.117"
+    }
+}

@@ -1,0 +1,11 @@
+*.elc
+*.pyc
+/.log/
+__pycache__
+node_modules/
+dist/
+tags
+src/svg_cache
+src/cover_cache
+src/lyrics_cache
+src/cloud_cache

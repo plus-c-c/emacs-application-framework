@@ -1,0 +1,56 @@
+{
+  "pacman": [
+    "taglib"
+  ],
+  "emerge": [
+    "media-libs/taglib"
+  ],
+  "apt": [
+    "libtag1-dev"
+  ],
+  "dnf": [
+    "taglib-devel"
+  ],
+  "pkg": [
+    "taglib"
+  ],
+  "zypper":[
+    "python38-pytaglib"
+  ],
+  "pip": {
+    "linux": [
+      "mutagen",
+      "pytaglib",
+      "certifi",
+      "pycryptodome",
+      "rsa",
+      "Pillow",
+      "requests",
+      "flask"
+    ],
+    "win32": [
+      "mutagen",
+      "pytaglib",
+      "certifi",
+      "pycryptodome",
+      "rsa",
+      "Pillow",
+      "requests",
+      "flask"
+    ],
+    "darwin": [
+      "mutagen",
+      "pytaglib",
+      "certifi",
+      "pycryptodome",
+      "rsa",
+      "Pillow",
+      "requests",
+      "flask"
+    ]
+  },
+  "npm_global": [
+    "album-art"
+  ],
+  "vue_install": true
+}
