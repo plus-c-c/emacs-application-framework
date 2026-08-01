@@ -58,11 +58,13 @@
   (substring (format (concat "%0" (int-to-string 4) "X") int) (- 2)))
 
 (defun eaf-color-name-to-hex (color)
-  (let ((components (x-color-values color)))
-    (concat "#"
-            (eaf-color-int-to-hex (nth 0 components))
-            (eaf-color-int-to-hex (nth 1 components))
-            (eaf-color-int-to-hex (nth 2 components)))))
+  (let ((components (and (stringp color) (x-color-values color))))
+    (if components
+        (concat "#"
+                (eaf-color-int-to-hex (nth 0 components))
+                (eaf-color-int-to-hex (nth 1 components))
+                (eaf-color-int-to-hex (nth 2 components)))
+      "#FFFFFF")))
 
 (defun eaf-start-process ()
   "Start EAF process if it isn't started."

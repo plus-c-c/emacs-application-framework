@@ -33,9 +33,11 @@
             (if (eaf--on-hyprland-p)
                 (let ((json (shell-command-to-string "hyprctl -j monitors")))
                   (if (string-empty-p json) 1.0
-                    (let* ((monitors (json-parse-string json))
-                           (scale-val (gethash "scale" (aref monitors 0))))
-                      (string-to-number (format "%s" scale-val)))))
+                    (condition-case err
+                        (let* ((monitors (json-parse-string json))
+                               (scale-val (gethash "scale" (aref monitors 0))))
+                          (string-to-number (format "%s" scale-val)))
+                      (error 1.0))))
               1.0))))
 
 (defun eaf--build-process-environment ()
