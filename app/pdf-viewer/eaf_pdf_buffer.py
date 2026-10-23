@@ -23,7 +23,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtCore import QTimer,  QObject
 from core.buffer import Buffer    # type: ignore
 from core.utils import *
-import fitz
+import pymupdf as fitz
 import os
 import threading
 

@@ -23,7 +23,7 @@ import math
 import time
 import webbrowser
 
-import fitz
+import pymupdf as fitz
 from core.utils import *
 from eaf_pdf_annot import AnnotAction
 from eaf_pdf_document import PdfDocument

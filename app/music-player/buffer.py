@@ -508,6 +508,8 @@ def color_is_similar(color, new_color, similarity_threshold):
     return distance < similarity_threshold
 
 def relative_luminance(color):
+    if not color:
+        return 0
     color = color[:3]  # fix rgba error
     r, g, b = (c / 255 for c in color)
     gamma_corrected = tuple(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055)**2.4 for c in (r, g, b))
@@ -519,6 +521,7 @@ def contrast_ratio(color1, color2):
     return (l1 + 0.05) / (l2 + 0.05) if l1 > l2 else (l2 + 0.05) / (l1 + 0.05)
 
 def get_color(img_path, title, background_color):
+    background_color = background_color or (30, 31, 41)
     results = []
 
     if img_path:
@@ -566,11 +569,14 @@ def get_color(img_path, title, background_color):
     return results
 
 def hex_to_rgb(hex_color):
+    if not hex_color:
+        return (30, 31, 41)
     if hex_color.startswith("#"):
         hex_color = hex_color[1:]
-
+    if len(hex_color) == 8:
+        hex_color = hex_color[:6]
     if len(hex_color) != 6:
-        return None
+        return (30, 31, 41)
 
     return tuple(int(hex_color[i:i+2], 16) for i in range(0, 6, 2))
 
@@ -578,6 +584,7 @@ def rgb_to_hex(rgb_color):
     return '#' + ''.join([format(c, '02x') for c in rgb_color])
 
 def generate_colors(song_name, bg_color):
+    bg_color = bg_color or (30, 31, 41)
     random.seed(hashlib.md5(song_name.encode('utf-8')).hexdigest())
     colors = []
 

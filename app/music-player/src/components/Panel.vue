@@ -257,7 +257,15 @@
 
      handlePlayFinish() {
        if (this.playOrderIcon === "list") {
-         this.playNext();
+         var total = this.isLocalPlaySource ? this.localTrackInfos.length : this.cloudTrackInfos.length;
+         var currentIndex = this.isLocalPlaySource ? this.localCurrentTrackIndex : this.cloudCurrentTrackIndex;
+         if (currentIndex < total - 1) {
+           this.playNext();
+         } else {
+           this.$refs.player.pause();
+           this.$refs.player.currentTime = 0;
+           this.playIcon = "play-circle";
+         }
        } else if (this.playOrderIcon === "random") {
          this.playRandom();
        } else if (this.playOrderIcon === "repeat") {
@@ -422,9 +430,10 @@
        } else {
          total = this.cloudTrackInfos.length;
        }
-       var min = 0;
-       var max = total;
-       var randomIndex = Math.floor(Math.random() * (max - min + 1)) + min;
+       if (total <= 0) {
+         return;
+       }
+       var randomIndex = Math.floor(Math.random() * total);
        this.playTrack(randomIndex);
      },
 

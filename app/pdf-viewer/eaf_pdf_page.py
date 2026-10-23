@@ -19,7 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import fitz
+import pymupdf as fitz
 fitz.TOOLS.unset_quad_corrections(True)
 from core.utils import get_emacs_vars
 from eaf_pdf_utils import generate_random_key, support_hit_max
