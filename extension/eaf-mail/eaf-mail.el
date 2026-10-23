@@ -93,12 +93,12 @@
 
 (defun eaf--gnus-htmlp (part)
   "Determine whether the gnus mail PART is HTML."
-  (when-let ((type (mm-handle-type part)))
+  (when-let* ((type (mm-handle-type part)))
     (string= "text/html" (car type))))
 
 (defun eaf--notmuch-htmlp (part)
   "Determine whether the notmuch mail PART is HTML."
-  (when-let ((type (plist-get part :content-type)))
+  (when-let* ((type (plist-get part :content-type)))
     (string= "text/html" type)))
 
 (defun eaf--get-html-func ()

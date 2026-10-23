@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-file-sender.el --- File sender plugin
 
 ;; Filename: eaf-file-sender.el

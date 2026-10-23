@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-video-player.el --- Video player
 
 ;; Filename: eaf-video-player.el

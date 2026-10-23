@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-image-viewer.el --- Image viewer
 
 ;; Filename: eaf-image-viewer.el

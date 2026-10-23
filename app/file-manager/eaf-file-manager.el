@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-file-manager.el --- File manager
 
 ;; Filename: eaf-file-manager.el

@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-markdown-previewer.el --- Markdown previewer
 
 ;; Filename: eaf-markdown-previewer.el

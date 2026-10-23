@@ -108,7 +108,7 @@
   "Update editor data from org mode file."
   (interactive)
   (with-current-buffer (find-file-noselect eve--org-file)
-    (when-let ((elements (eve-org-elements))
+    (when-let* ((elements (eve-org-elements))
                (buffer-id (eve-buffer-id)))
       ;; (print elements)
       (eaf-call-async "execute_function_with_args"

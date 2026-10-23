@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-browser.el --- Browser plugins
 
 ;; Filename: eaf-browser.el

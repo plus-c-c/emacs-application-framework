@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-org-previewer.el --- Org previewer
 
 ;; Filename: eaf-org-previewer.el

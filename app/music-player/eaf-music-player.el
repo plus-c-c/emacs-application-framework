@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-music-player.el --- Music player
 
 ;; Filename: eaf-music-player.el

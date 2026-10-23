@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; eaf-jupyter.el --- Jupyter
 
 ;; Filename: eaf-jupyter.el
