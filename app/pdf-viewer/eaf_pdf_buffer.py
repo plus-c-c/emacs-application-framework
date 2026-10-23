@@ -229,6 +229,9 @@ class AppBuffer(Buffer):
             self.buffer_widget.jump_to_percent(int(result_content))
         elif callback_tag == "jump_link":
             self.buffer_widget.jump_to_link(str(result_content))
+        elif callback_tag == "goto_page_and_y_percent":
+            self.buffer_widget.mark_position()
+            self.goto_page_and_y_percent(str(result_content))
         elif callback_tag == "search_text":
             self.search_adapter.search_text(str(result_content))
 
@@ -313,9 +316,15 @@ class AppBuffer(Buffer):
         page = int(parts[0])
         y_percent = float(parts[1]) if len(parts) > 1 else 0
         widget = self.buffer_widget
-        rendered_page_height = widget.page_height * widget.scale + widget.page_padding
-        local_y = y_percent * rendered_page_height / 100.0
-        offset = widget.page_y_to_offset_y(page - 1, local_y)
+        # Match current_scroll_info's coordinate system: Y-percent is a
+        # fraction of the rendered page (including the inter-page padding).
+        page_index = page - 1
+        page_height = (widget.page_heights[page_index]
+                       if 0 <= page_index < len(widget.page_heights)
+                       else widget.page_height)
+        rendered_page_height = page_height * widget.scale + widget.page_padding
+        offset = (widget.accumulate_page_heights(page_index - 1)
+                  + y_percent * rendered_page_height / 100.0)
         widget.update_vertical_offset(offset)
 
     def jump_to_page_synctex(self, info):
@@ -413,8 +422,11 @@ class AppBuffer(Buffer):
     def current_scroll_info(self):
         """Return 'page:y_percent' where y_percent is 0-100 within the page."""
         widget = self.buffer_widget
-        page_index, local_y = widget.offset_y_to_render_y(widget.scroll_offset)
-        rendered_page_height = widget.page_height * widget.scale + widget.page_padding
+        page_index, _, local_y = widget.offset_y_to_render_y(widget.scroll_offset)
+        page_height = (widget.page_heights[page_index]
+                       if 0 <= page_index < len(widget.page_heights)
+                       else widget.page_height)
+        rendered_page_height = page_height * widget.scale + widget.page_padding
         y_percent = (local_y / rendered_page_height * 100) if rendered_page_height > 0 else 0
         return "{0}:{1:.1f}".format(page_index + 1, y_percent)
 

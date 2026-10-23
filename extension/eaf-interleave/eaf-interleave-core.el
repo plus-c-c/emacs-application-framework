@@ -191,34 +191,56 @@ based on a combination of `current-prefix-arg' and
         (enlarge-window-horizontally eaf-interleave-split-lines)))
     ))
 
-(defun eaf-interleave--go-to-page-note (url page)
-  "Look up the notes for the current pdf PAGE.
+(defun eaf-interleave--page-y-close-p (a b &optional tolerance)
+  "Return non-nil when page-y strings A and B are on the same line.
+TOLERANCE is a percentage of the page height (default 2.0)."
+  (let* ((a-parts (split-string a ":"))
+         (b-parts (split-string b ":"))
+         (a-page (car a-parts))
+         (b-page (car b-parts))
+         (a-y (string-to-number (or (cadr a-parts) "0")))
+         (b-y (string-to-number (or (cadr b-parts) "0"))))
+    (and (equal a-page b-page)
+         (<= (abs (- a-y b-y)) (or tolerance 2.0)))))
 
-Effectively resolves the headline with the interleave_page_note
-property set to PAGE and returns the point.
+(defun eaf-interleave--go-to-page-note (url page &optional page-y)
+  "Look up notes for the current PDF PAGE, optionally at PAGE-Y.
+
+PAGE-Y is a \"page:y_percent\" string.  When it is non-nil, a
+note is considered a match only when it is on the same page and
+within a small vertical tolerance.  This lets multiple notes on one
+page point at different lines.
 
 If `eaf-interleave-disable-narrowing' is non-nil then the buffer gets
 re-centered to the page heading.
 
 It (possibly) narrows the subtree when found."
   (with-current-buffer eaf-interleave-org-buffer
-    (let ((property-list (org-map-entries (lambda ()
-                                        (let ((url (org-entry-get-with-inheritance eaf-interleave--url-prop))
-                                              (page (org-entry-get-with-inheritance eaf-interleave--page-note-prop)))
-                                          (cons url page)))))
-          point)
-      (catch 'find-property
-        (dolist (property property-list)
-          (when (and (string= (car property) url)
-                     (string= (cdr property) (number-to-string page)))
-            (widen)
-            (org-back-to-heading t)
-            (eaf-interleave--narrow-to-subtree)
-            (org-show-subtree)
-            (org-cycle-hide-drawers t)
-            (setq point (point))
-            (throw 'find-property nil))))
-      point)))
+    (widen)
+    (let ((position
+           (catch 'found
+             (org-map-entries
+              (lambda ()
+                (let ((note-url (org-entry-get-with-inheritance
+                                 eaf-interleave--url-prop))
+                      (note-page (org-entry-get-with-inheritance
+                                  eaf-interleave--page-note-prop))
+                      (note-page-y (org-entry-get-with-inheritance
+                                    eaf-interleave--page-y-note-prop)))
+                  (when (and (string= note-url url)
+                             (string= note-page (number-to-string page))
+                             (or (null page-y)
+                                 (and note-page-y
+                                      (eaf-interleave--page-y-close-p
+                                       page-y note-page-y))))
+                    (throw 'found (point)))))))))
+      (when (integer-or-marker-p position)
+        (goto-char position)
+        (org-back-to-heading t)
+        (eaf-interleave--narrow-to-subtree)
+        (org-show-subtree)
+        (org-cycle-hide-drawers t)
+        (point)))))
 
 (defun eaf-interleave--narrow-to-subtree (&optional force)
   "Narrow buffer to the current subtree.
@@ -329,7 +351,8 @@ Consider a headline with property PROPERTY as parent headline."
   "EAF pdf-viewer-mode add note"
   (let* ((page-y (eaf-interleave--pdf-viewer-current-page-y eaf--buffer-url))
          (page (string-to-number (car (split-string page-y ":"))))
-         (position (eaf-interleave--go-to-page-note eaf--buffer-url page)))
+         (position (eaf-interleave--go-to-page-note
+                    eaf--buffer-url page page-y)))
     (if position
         (eaf-interleave--switch-to-org-buffer t position)
       (eaf-interleave--create-new-note eaf--buffer-url eaf--buffer-app-name page-y)))
